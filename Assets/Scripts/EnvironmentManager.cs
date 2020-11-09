@@ -15,6 +15,7 @@ public class EnvironmentManager : MonoBehaviour
     public Collider m_AreaB;
 
     [Header("Spawnables")]
+    public bool m_FinishedSpawning = false;
     public GameObject[] m_MonkeyPrefabs;
     public GameObject m_BananaPrefab;
 
@@ -35,6 +36,7 @@ public class EnvironmentManager : MonoBehaviour
     public int m_Generation = 0;
 
     [Header("Debug")]
+    [Range(0.0f, 100f)] public float m_SceneSpeed = 1f;
     public Text txtGeneration;
     public Text txtBestLifetime;
     public Text txtBestHungerResistence;
@@ -44,9 +46,10 @@ public class EnvironmentManager : MonoBehaviour
 
     private void Update()
     {
+        Time.timeScale = m_SceneSpeed;
         UpdateUI();
         
-        if (m_Monkeys.Count == 1)
+        if (m_Monkeys.Count == 1 && m_FinishedSpawning)
             m_HasBestFromLastGeneration = GetMonkeyInfo(m_Monkeys[0].GetComponent<Monkey>());
 
         if(m_Generation < m_MaxGeneration)
@@ -66,6 +69,7 @@ public class EnvironmentManager : MonoBehaviour
 
     private IEnumerator SpawnMonkeys()
     {
+        m_FinishedSpawning = false;
         do
         {
             GameObject _Monkey = GetRandomMonkey();
@@ -73,25 +77,39 @@ public class EnvironmentManager : MonoBehaviour
             GameObject _SpawnedMonkey = Instantiate(_Monkey, _position, Quaternion.identity);            
             yield return null;
         } while (m_Monkeys.Count < m_MaxPopulationSize);
+        m_FinishedSpawning = true;
     }
 
     private IEnumerator SpawnBananas()
     {
         do
         {
-            Vector3 _position = GetPositionInCollider(m_AreaA);
+            Collider m_Area = GetRandomArea();
+            Vector3 _position = GetPositionInCollider(m_Area);
             GameObject _SpawnedBanana = Instantiate(m_BananaPrefab, _position, Quaternion.identity);
             m_Bananas.Add(_SpawnedBanana);
             yield return null;
         } while (m_Bananas.Count < m_Monkeys.Count);
     }
 
+    private Collider GetRandomArea() {
+        float _RandomFloat = Random.Range(0.0f, 100f);
+        
+        float m_GenerationClamp = (m_Generation >= 100) ? 100 : m_Generation;
+
+        if(_RandomFloat >= 100 - m_GenerationClamp)
+            return m_AreaB;
+        else
+            return m_AreaA;        
+    }
+
+
     public bool GetMonkeyInfo(Monkey monkey)
     {
-        m_BestLifetime = monkey.m_Lifetime;
+        m_BestLifetime = (monkey.m_Lifetime > m_BestLifetime) ? monkey.m_Lifetime : m_BestLifetime;
         m_BestHungerResistence = monkey.m_Hunger;
         m_BestVisionDistance = monkey.m_VisionDistance;
-
+        Destroy(monkey.gameObject);
         return true;
     }
 

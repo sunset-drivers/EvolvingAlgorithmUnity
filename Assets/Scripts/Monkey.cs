@@ -16,6 +16,8 @@ public class Monkey : MonoBehaviour
     public bool m_CanReproduce = false;
 
     [Header("Behaviour Infomation")]
+    public bool m_CanJump = true;
+    private float m_JumpTime = 2f;
     public EnvironmentManager m_Environment; 
     public GameObject m_SeekingObject;
     public float m_DestinationDistanceAccuracy = 1.0f;
@@ -26,12 +28,14 @@ public class Monkey : MonoBehaviour
     public LayerMask m_GroundLayer;
     
     [Header("Components")]
+    public Rigidbody m_Rigidbody;
     public NavMeshAgent m_Agent;
     public GameObject m_DefaultMonkey;   
     
     private void Awake() {
         m_Agent = GetComponent<NavMeshAgent>();
         m_Environment = GameObject.Find("EnvironmentManager").GetComponent<EnvironmentManager>();
+        m_Rigidbody = GetComponent<Rigidbody>();
         m_Environment.m_Monkeys.Add(this.gameObject);
         StartCoroutine("Growing");
     }
@@ -55,6 +59,14 @@ public class Monkey : MonoBehaviour
         } while (!m_Born);
     }
  
+    private IEnumerator Jumped() {
+        m_CanJump = false;
+        m_Agent.isStopped = true;
+        yield return new WaitForSeconds(m_JumpTime);
+        m_CanJump = true;
+        m_Agent.isStopped = false;
+    }
+
     private void Update() {
         m_Lifetime += Time.deltaTime;
         m_Life -= Time.deltaTime * m_Hunger;
@@ -90,8 +102,7 @@ public class Monkey : MonoBehaviour
     }
 
     private void Reproduce(Monkey Partner)
-    {
-        Debug.Log("Reprodução");
+    {        
         Partner.m_CanReproduce = false;
         m_CanReproduce = false;
 
@@ -127,6 +138,12 @@ public class Monkey : MonoBehaviour
         }        
     }
 
+    private void Jump() {     
+        Debug.Log("Pulow") ;  
+        StartCoroutine("Jumped");        
+        m_Rigidbody.AddForce(Vector3.up * m_JumpHeight * 10f, ForceMode.Impulse);                
+    }
+
     private void Seek(LayerMask layer) {
         Collider[] _CollidersFound = Physics.OverlapSphere(transform.position, m_VisionDistance, layer);
         Collider _NearestCollider = null;
@@ -153,6 +170,9 @@ public class Monkey : MonoBehaviour
         {
             m_SeekingObject = _NearestCollider.gameObject;
             m_Agent.SetDestination(m_SeekingObject.transform.position);
+
+            if(m_CanJump)
+                Jump();
         }            
         else
             Wander();
